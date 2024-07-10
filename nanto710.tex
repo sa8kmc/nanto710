@@ -1,0 +1,128 @@
+\documentclass[10pt,dvipdfmx]{ujarticle}
+\input{~/.template/preamble.tex}
+\usepackage[backend=biber, style=ieee, natbib=false]{biblatex}
+\input{~/.template/biber_namedelim_setting.tex}
+\usepackage{url}
+\newcommand{\nantoset}{\mathcal{N}}
+\providecommand{\keywords}[1]
+{
+  \small	
+  \textbf{\textit{Keywords---}} #1
+  \normalsize	
+}
+\addbibresource{biblio.bib}
+\title{なんと7と10(と四則演算)だけで任意の整数を表現する}
+\author{Watson\thanks{全日本なんと南東同好会名古屋支部}}
+\begin{document}
+\maketitle
+\keywords{南東, 式木, 数字パズル, プログラミング}
+
+\section{序文}
+7月10日はなんと南東の日。
+
+\section{Theory}
+整数項の四則演算式について、
+この式を中置記法で表したときに全ての奇数番目の整数項が$\pm 7$であり、かつ全ての偶数番目の整数項が$\pm 10$であるとき、
+この式は``南東式''であるとする。ただし、複号は任意である。
+
+これをより厳密にBNF記法で表現すると、次のようになる。
+\begin{definition}[南東式]
+    \begin{equation}
+        \begin{aligned}
+            \star          & ::= +\mid\ominus\mid\times\mid\olddiv                                                             \\
+            \nantoset_{南南} & ::= 7\mid-7\mid(\nantoset_{南東})\star(\nantoset_{南南}) \mid (\nantoset_{南南})\star(\nantoset_{東南})   \\
+            \nantoset_{南東} & ::= (\nantoset_{南南})\star(\nantoset_{東東}) \mid (\nantoset_{南東})\star(\nantoset_{南東})              \\
+            \nantoset_{東南} & ::= (\nantoset_{東東})\star(\nantoset_{南南}) \mid (\nantoset_{東南})\star(\nantoset_{東南})              \\
+            \nantoset_{東東} & ::= 10\mid-10\mid(\nantoset_{東東})\star(\nantoset_{南東}) \mid (\nantoset_{東南})\star(\nantoset_{東東}) \\
+        \end{aligned}
+        \label{NantoDefinition}
+    \end{equation}
+    この規約で定められる$\nantoset_{南東}$を南東式全体の集合と定め、$\nantoset_{南東}$の元を\textbf{強南東式}と呼ぶ。
+    ここで、$\ominus$は差の絶対値$A\ominus B\equiv|A-B|$をとる演算子とする。
+    以降、$\bullet\ominus\bullet$と$|\bullet-\bullet|$を数式として同一視する。
+
+    また、和集合$\nantoset_{南南}\cup\nantoset_{南東}\cup\nantoset_{東南}\cup\nantoset_{東東}$を\textbf{南東式}と呼ぶ。
+    南東式の初項と末項の組を\textbf{型}と呼び、
+    2南東式$A,B$を演算子$\star$で結んだときに新たな南東式になるとき、この2式の型は\textbf{適合する}と呼ぶ。
+\end{definition}
+
+以降の議論では、絶対値記号を外しても式の値が変わらないときは絶対値記号を外せるものとする。
+
+\begin{lemma}[$1,0,-1$の南東式表現]
+    \begin{subequations}
+        \begin{align}
+            (7-10)\olddiv(7-10)  & =1,  \\
+            (7+10)-(7+10)        & =0,  \\
+            (7-10)\olddiv(-7+10) & =-1.
+        \end{align}
+    \end{subequations}
+    ゆえに、任意の整数$k\neq 0$は、${\rm sgn~}k$の南東式を$|k|$個並べて足し合わせることで表現できる。
+\end{lemma}
+
+しかし、これだけでは面白みがないので、%TODO: 面白みとは?
+最小手数、つまりある整数を南東式で表現する項数の最小数を考えることにする。
+
+\subsection{漸化式}
+ここで、南東式中の7および10の項数を\textbf{手数}と定める。
+例えば$(7+10)-|7-10|$の手数は4である。
+
+$\texttt{t}\in\{南東, 東南, 東東, 南南\}$とする。
+$\texttt{L[N,t]}$は$N$を表現する南東式の最小手数の推定値とする。
+
+$\texttt{L[N,t]}$が更新されたとき、この数を途中の計算に含む南東式の結果の最小手数推定値もまた更新されうる。
+$\mathtt{t}$と右適合する型$\mathtt{u_R}$および左適合する型$\mathtt{u_L}$について、
+$N$と非負整数$M$の組の四則演算の結果$\mathtt{P_R}=\mathtt{N}\star \mathtt{M},\;\mathtt{P_L}=\mathtt{M}\star \mathtt{N}$について
+$\mathtt{L[P_L,v_L]}, \mathtt{L[P_R,v_R]}$
+($\mathtt{v_L}=\mathtt{u_L}\star \mathtt{t}, \mathtt{v_R}=\mathtt{t}\star \mathtt{u_R}$)もまた更新されうる。
+この関係を用いて、下式のように$\mathtt{L[P,\bullet]}$を更新する。
+\begin{equation}
+    \begin{aligned}
+        \mathtt{L[P,v_L]}\leftarrow\min\{\mathtt{L[P,v_L]},\;\mathtt{L[M,u_L]}+\mathtt{L[N,t]}\}, \\
+        \mathtt{L[P,v_R]}\leftarrow\min\{\mathtt{L[P,v_R]},\;\mathtt{L[N,t]}+\mathtt{L[M,u_R]}\}.
+    \end{aligned}
+\end{equation}
+
+更新が起きた$\mathtt{(N,t)}$を順次キューに追加し、
+キューの先頭から取り出した$\mathtt{(N',t')}$から上の更新処理を行うことを、
+キューが空になるまで繰り返す。
+これによって南東式の最小手数を計算できる。
+
+\subsection{式表現}
+付属のプログラムでは、各行および各式が指定された$\mathtt{N}$未満の非負整数のみからなる強南東式の最小手数を計算するとともに、
+その最小手数を実現する強南東式の実例を格納する。
+
+\newcommand{\FA}[1]{\mathtt{F[#1]}}
+$\mathtt{A}=\mathtt{B}\star \mathtt{C}$なる非負整数$\mathtt{A,B,C}$について、
+この順番で適合する$\mathtt{A,B,C}$の南東式をそれぞれ$\FA{A}, \FA{B}, \FA{C}$と表す。
+
+$\FA{A}$が$\mathtt{A}$の南東式のうち最小手数であると仮定する。
+$\FA{A}=\FA{B}\star\FA{C}$と分解できるとすると、
+$\FA{B},\FA{C}$もまた$\mathtt{B}$,$\tt C$の南東式のうち最小手数である。
+
+したがって、$\FA{A}\equiv \FA B\star\FA C$の記憶には、
+$\mathtt{B},\mathtt{C}$の値、$\FA B, \FA C$の型、$\star$の内容、
+$\FA{A}$の手数
+を格納すればよい。ただし、手数の記憶は前章の手数更新に必要である。
+
+強南東式の復元には、上で書いたような南東式の分解により動的に生成される式木を辿ればよい。
+この式木は$A$を根、$7,10$を葉とする。
+
+付属のプログラムでは、各項にカッコが必要ない場合はそのカッコを外す処理も行っている。
+
+\section{結びに}
+今回は南東式の復元について絶対値記号の使用を認めているが、
+探索空間に負の数を認めるまたは減算と符号反転の適切な処理により、
+絶対値記号を使わない南東式を復元することも可能であると考えられる。
+
+今回は途中式がすべて非整数となる範囲で南東式の探索を行ったが、
+このような数式パズルでは一般に、途中式に非整数が現れることもありうる。また、演算に連結
+\footnote{2数を10進法で左右に連結して大きな別の数とみなす演算。例: $(7, 10)\mapsto 710$。}
+やべき乗、平方根や階乗をも認めていることが多く、途中式に現れる空間は有理数にすら収まらず膨大である。
+そのような空間での式探索は今回のコードよりも圧倒的に高度な探索アルゴリズムが必要であると考えられる。
+
+それでは皆さん、
+\begin{equation*}
+    (7+10-7+10\times7\times10)\times(7\times10+7)\times(10-7+10).
+\end{equation*}
+\printbibliography
+\end{document}
